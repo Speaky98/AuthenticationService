@@ -1,0 +1,144 @@
+version: "3.9"
+
+networks:
+  springboot-mssql-net:
+    external: true
+
+services:
+
+  #Eureka
+
+  eureka:
+    build: ./ServeurEureka
+    restart: on-failure
+    networks:
+      - springboot-mssql-net
+    container_name: eureka
+    ports:
+      - "8084:8084"
+
+  #Databases
+
+  mysqldb:
+    image: mysql:latest
+    restart: on-failure
+    environment:
+      - MYSQL_ROOT_PASSWORD=1234
+      - MYSQL_DATABASE=ErpDB
+      - MYSQL_USER=sys
+      - MYSQL_PASSWORD=1234
+    networks:
+      - springboot-mssql-net
+    container_name: mysqldb
+    ports:
+      - "3333:3306"
+    depends_on:
+      - eureka
+
+  mssqldb:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: on-failure
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=yourStrong(!)Password
+    networks:
+      - springboot-mssql-net
+    container_name: mssqldb
+    ports:
+      - "1401:1433"
+    depends_on:
+      - mysqldb
+
+  mongodb:
+    image: mongo:latest
+    restart: on-failure
+    networks:
+      - springboot-mssql-net
+    container_name: mongodb
+    ports:
+      - "27018:27017"
+    depends_on:
+      - mysqldb
+
+  #Microservices
+
+  authentication:
+    build: ./AuthenticationService
+    restart: on-failure
+    networks:
+      - springboot-mssql-net
+    container_name: authentication
+    ports:
+      - "8082:8082"
+    depends_on:
+      - eureka
+  parking:
+    build: ./ParkingService
+    restart: on-failure
+    networks:
+      - springboot-mssql-net
+    container_name: parking
+    ports:
+      - "8085:8085"
+    depends_on:
+      - authentication
+  sallecinema:
+    build: ./MicroServiceSalleCinema
+    restart: on-failure
+    networks:
+      - springboot-mssql-net
+    container_name: sallecinema
+    ports:
+      - "8086:8086"
+    depends_on:
+      - parking
+  film:
+    build: /Film_Realisateur_microservices/FilmService
+    restart: on-failure
+    networks:
+      - springboot-mssql-net
+    container_name: film
+    ports:
+      - "8087:8087"
+    depends_on:
+      - sallecinema
+  realisateur:
+    build: /Film_Realisateur_microservices/RealisateurService
+    restart: on-failure
+    networks:
+      - springboot-mssql-net
+    container_name: realisateur
+    ports:
+      - "8088:8088"
+    depends_on:
+      - film
+  avis:
+    build: ./Avisms
+    restart: on-failure
+    networks:
+      - springboot-mssql-net
+    container_name: avis
+    ports:
+      - "8089:8089"
+    depends_on:
+      - realisateur
+  filter:
+    build: ./Gateway
+    restart: on-failure
+    networks:
+      - springboot-mssql-net
+    container_name: filter
+    ports:
+      - "8083:8083"
+    depends_on:
+      - avis
+  reclamationwithnode:
+    build: ./projectexpress
+    restart: on-failure
+    networks:
+      - springboot-mssql-net
+    container_name: reclamationwithnode
+    ports:
+      - "3000:3000"
+    depends_on:
+      - filter

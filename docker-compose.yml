@@ -83,15 +83,25 @@ services:
     depends_on:
       - authentication
   sallecinema:
-    build: ./MicroServiceSalleCinema
+    build: /microservicestarak/SalleCinema-EurekaClient
     restart: on-failure
     networks:
       - springboot-mssql-net
     container_name: sallecinema
     ports:
-      - "8086:8086"
+      - "8090:8090"
     depends_on:
       - parking
+  centre:
+    build: /microservicestarak/Centre-Cinema
+    restart: on-failure
+    networks:
+      - springboot-mssql-net
+    container_name: centre
+    ports:
+      - "8091:8091"
+    depends_on:
+      - sallecinema
   film:
     build: /Film_Realisateur_microservices/FilmService
     restart: on-failure
@@ -101,7 +111,7 @@ services:
     ports:
       - "8087:8087"
     depends_on:
-      - sallecinema
+      - centre
   realisateur:
     build: /Film_Realisateur_microservices/RealisateurService
     restart: on-failure
